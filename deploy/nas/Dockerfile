@@ -1,14 +1,15 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
-ARG SOURCE_COMMIT
 LABEL org.opencontainers.image.source="https://github.com/FSOTM/deeptutor-private"
-LABEL org.opencontainers.image.revision="${SOURCE_COMMIT}"
 WORKDIR /app
-# Frontend and dependencies come from the digest-pinned matching upstream image.
-# Python sources are the reviewed Git tree, including all upstream changes.
+# Python dependencies come from the digest-pinned matching upstream image.
+# The complete maintained frontend is built in CI and verified before copying.
+RUN pip install --no-cache-dir edge-tts==7.3.1 && rm -rf /app/web
+COPY web-runtime/ /app/web/
 COPY deeptutor/ /app/deeptutor/
 COPY deploy/nas/tests/ /opt/deeptutor-nas/tests/
-COPY deploy/nas/verify_runtime.py /opt/deeptutor-nas/verify_runtime.py
-COPY deploy/nas/updater.py /opt/deeptutor-nas/updater.py
+COPY deploy/nas/verify_runtime.py deploy/nas/updater.py deploy/nas/frontend_bundle.py /opt/deeptutor-nas/
 RUN python -m compileall -q /app/deeptutor && \
     python -m unittest discover -s /opt/deeptutor-nas/tests -p 'test_*.py' -v
+ARG SOURCE_COMMIT
+LABEL org.opencontainers.image.revision="${SOURCE_COMMIT}"

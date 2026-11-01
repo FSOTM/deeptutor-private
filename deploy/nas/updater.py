@@ -162,6 +162,11 @@ class Updater:
         folder.mkdir(parents=True,mode=0o700)
         raw=subprocess.check_output(['/usr/bin/git','--git-dir='+str(self.git_dir),'archive',source,'deeptutor','deploy/nas'],env=self.env)
         extract_source(raw,folder/'source')
+        if approval.get('frontend_bundle'):
+            approval_path=folder/'frontend-approval.json'
+            approval_path.write_text(json.dumps(approval))
+            run(['/usr/bin/python3',folder/'source/deploy/nas/frontend_bundle.py','download',
+                 '--approval',approval_path,'--destination',folder/'source/web-runtime'])
         lock=json.loads((folder/'source/deploy/nas/upstream-image.json').read_text())
         if lock['source']!='ghcr.io/hkuds/deeptutor' or lock['manifest_digest']!=approval['upstream_manifest_digest'] or lock['version']!=approval['upstream_version']:
             raise RuntimeError('Approved source/image identity mismatch')

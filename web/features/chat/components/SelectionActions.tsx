@@ -16,6 +16,7 @@ import { ChevronDown, MessagesSquare, TextQuote } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import ResponderList from "@/components/chat/home/ResponderList";
 import { DITO, type SideChatResponder } from "@/lib/side-chat";
+import { PlayAudioButton } from "@/components/voice/SpeechButton";
 
 export interface SelectionAnchor {
   left: number;
@@ -24,7 +25,7 @@ export interface SelectionAnchor {
   bottom: number;
 }
 
-const BAR_WIDTH = 232;
+const BAR_WIDTH = 272;
 const BAR_HEIGHT = 36;
 const MENU_WIDTH = 248;
 const MENU_MAX_HEIGHT = 320;
@@ -46,12 +47,16 @@ function place(anchor: SelectionAnchor) {
 
 export default function SelectionActions({
   anchor,
+  text,
+  workspaceName,
   agents,
   onAddToChat,
   onAsk,
   onDismiss,
 }: {
   anchor: SelectionAnchor;
+  text: string;
+  workspaceName?: string;
   /** Connected agents (not partners) this account can talk to. */
   agents: { name: string; kind?: string }[];
   onAddToChat: () => void;
@@ -89,6 +94,15 @@ export default function SelectionActions({
         className="flex items-stretch overflow-hidden rounded-xl bg-[var(--foreground)] text-[var(--background)] shadow-lg"
         style={{ height: BAR_HEIGHT }}
       >
+        <PlayAudioButton
+          key={text}
+          content={text}
+          autoPlayFresh={false}
+          selection
+          workspaceName={workspaceName}
+          className={`${segment} w-10 justify-center`}
+        />
+        <span aria-hidden="true" className="my-2 w-px bg-[color-mix(in_srgb,var(--background)_22%,transparent)]" />
         <button
           type="button"
           onClick={onAddToChat}

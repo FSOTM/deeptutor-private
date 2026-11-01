@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from frontend_bundle import validate
 
 ROOT=Path(__file__).resolve().parents[2]
 def git(*args,cwd=ROOT,check=True):
@@ -17,6 +18,17 @@ if not re.fullmatch(r'[0-9a-f]{40}',source):raise ValueError('Invalid tested sou
 if git('rev-parse','HEAD').stdout.strip()!=source:raise RuntimeError('Checkout differs from tested source')
 lock=json.loads((ROOT/'deploy/nas/upstream-image.json').read_text())
 git('push','origin',source+':refs/heads/io/nas-stable')
+frontend=json.loads(Path(sys.argv[2]).read_text())
+validate(frontend,source)
+asset=Path(sys.argv[3])
+from frontend_bundle import digest
+if asset.stat().st_size!=frontend['bytes'] or digest(asset)!=frontend['sha256']:
+    raise RuntimeError('Frontend artifact differs from the tested build')
+release='nas-'+source
+found=subprocess.run(['gh','release','view',release,'--repo','FSOTM/deeptutor-private'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+if found.returncode:
+    subprocess.run(['gh','release','create',release,'--repo','FSOTM/deeptutor-private','--target',source,'--prerelease','--title','NAS build '+source[:12],'--notes','CI-built, checksum-verified frontend runtime for the maintained NAS deployment.'],check=True)
+subprocess.run(['gh','release','upload',release,str(asset),'--repo','FSOTM/deeptutor-private','--clobber'],check=True)
 work=Path(tempfile.mkdtemp(prefix='nas-approved-'))/'worktree'
 prior=git('fetch','origin','refs/heads/io/nas-approved',check=False)
 base=git('rev-parse','FETCH_HEAD').stdout.strip() if not prior.returncode else source
@@ -26,6 +38,7 @@ approval={'schema':1,'repository':'FSOTM/deeptutor-private','source_commit':sour
           'upstream_version':lock['version'],'upstream_manifest_digest':lock['manifest_digest'],
           'checks':{'policy_and_state':'passed','responses_optional_tools':'passed','frontend_edit_retry':'passed'},
           'model_window':1000000,'compaction_trigger':500000,'retained_history_budget':20000}
+approval['frontend_bundle']=frontend
 target=work/'deploy/nas/approved.json'
 target.parent.mkdir(parents=True,exist_ok=True)
 target.write_text(json.dumps(approval,indent=2)+'\n',encoding='utf-8')

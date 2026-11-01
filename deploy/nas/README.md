@@ -8,9 +8,12 @@ with upstream. There is no post-install patch program or source-file bind mount.
 - Daily at 04:10 Asia/Shanghai, GitHub Actions merges the latest stable upstream
   release locally. Conflicts stop the job before publication.
 - The matching official amd64 image is locked by manifest/config digests and
-  upstream source revision. The unchanged official frontend/dependencies are
-  reused; the image contains this repository's complete Python package. A local
-  frontend/dependency change requires a different build recipe and is rejected.
+  upstream source revision. Python dependencies are reused; the image contains
+  this repository's complete Python package and CI-built standalone frontend.
+  Frontend assets are published as a public, commit-specific GitHub prerelease;
+  their SHA256 and size are recorded in approval metadata. The NAS verifies the
+  asset and safely extracts it before building, without running Node compilation.
+  Python dependency/CLI changes still require explicit build-recipe review.
 - Edit/resend/card tests run against the matching frontend source. Context,
   immutable history, incremental state, compaction, Responses tools and rollback
   contracts run in the resulting image without an online model.
@@ -52,3 +55,20 @@ Operational facts:
 Private settings, study material, databases, SSH keys and runtime logs stay
 outside this Git repository. The deployment's original `data/` remains its
 persistent runtime home.
+
+## Selected text speech
+
+Selecting a word or sentence in chat or the reading pane exposes a play button
+on the existing nearby selection toolbar. It uses the configured speech service
+through the existing `/api/voice/tts` endpoint, without sending a chat turn or
+modifying learning history. English selections use Jenny; Japanese uses Nanami,
+with the workspace name resolving kanji-only selections. Chinese explanations
+use Xiaoxiao. Set the active TTS provider to `edge` / model `edge-tts` without a
+user API key. The Docker image pins `edge-tts==7.3.1`.
+
+Selection speech never auto-plays. A second click stops loading or playback;
+selecting different text disposes the old player. Decoded responses are reused
+from a browser-memory cache bounded to 32 selections / 8 MiB, scoped by account,
+workspace, voice and exact selected text. Cache entries do not enter Git, chat
+context or server logs. Whole-message playback retains its existing behavior
+and shares the one-player-at-a-time boundary with selection playback.
