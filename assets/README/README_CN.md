@@ -1,3 +1,5 @@
+> **FSOTM 社区维护分支。** 增加选词选句发音、停止后重新发送同步修复、保留缓存的教学状态增量、可选的总上下文压缩，以及 NAS 自动升级与回滚。**[与原版的完整差异](../../FORK.md) · [English](../../FORK_EN.md) · [NAS 流程](../../deploy/nas/README.md)**。以下保留原项目介绍。
+
 <div align="center">
 
 <p align="center"><img src="../../assets/figs/logo/color-full.png" alt="DeepTutor" width="480"></p>

@@ -1,10 +1,15 @@
-# Private NAS release workflow
+# Maintained NAS release workflow
+
+For user-facing changes, configuration and verification limits, see
+[What this fork changes](../../FORK_EN.md) / [与原版的区别](../../FORK.md).
+This repository is public; its historical `-private` name is retained. Runtime
+settings, learner data and credentials remain private.
 
 This is the maintained source tree. Changes to context policy, session caching,
 incremental mastery state and Responses tools are normal Git commits, merged
 with upstream. There is no post-install patch program or source-file bind mount.
 
-- Upstream: `HKUDS/DeepTutor`; private source branch: `io/nas-stable`.
+- Upstream: `HKUDS/DeepTutor`; maintained source branch: `io/nas-stable`.
 - Daily at 04:10 Asia/Shanghai, GitHub Actions merges the latest stable upstream
   release locally. Conflicts stop the job before publication.
 - The matching official amd64 image is locked by manifest/config digests and
@@ -18,7 +23,7 @@ with upstream. There is no post-install patch program or source-file bind mount.
   immutable history, incremental state, compaction, Responses tools and rollback
   contracts run in the resulting image without an online model.
 - Only successful jobs publish approval metadata on `io/nas-approved`. Source
-  and approval history are preserved; no update is pushed to the public project.
+  and approval history are preserved; no update is pushed to the upstream project.
 - NAS authenticates with a read-only deploy key scoped to this repository.
   Account-wide GitHub credentials never enter the NAS or Docker build.
 
