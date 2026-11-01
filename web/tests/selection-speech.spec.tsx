@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayAudioButton, selectionVoice } from "@/components/voice/SpeechButton";
 import SelectionActions from "@/features/chat/components/SelectionActions";
+import { SelectionSpeechToolbar } from "@/components/voice/SelectionSpeechToolbar";
 
 const mock = vi.hoisted(() => ({ fetch: vi.fn(), notify: vi.fn(), audio: [] as MockAudio[] }));
 vi.mock("@/lib/api", () => ({ apiUrl: (url: string) => url, apiFetch: (...args: unknown[]) => mock.fetch(...args) }));
@@ -31,6 +33,27 @@ beforeEach(() => {
 });
 
 describe("selected-text speech", () => {
+  it("exposes a nearby speech-only action in a learning transcript, even for one character", async () => {
+    const rootRef = createRef<HTMLDivElement>();
+    render(<><div ref={rootRef}><p data-testid="lesson">I am learning.</p></div><SelectionSpeechToolbar rootRef={rootRef} /></>);
+    const range = document.createRange();
+    range.setStart(screen.getByTestId("lesson").firstChild!, 0);
+    range.setEnd(screen.getByTestId("lesson").firstChild!, 1);
+    Object.defineProperty(range, "getClientRects", { value: () => [{ left: 100, right: 110, top: 130, bottom: 150, width: 10, height: 20 }] });
+    window.getSelection()!.removeAllRanges(); window.getSelection()!.addRange(range);
+    fireEvent.mouseUp(screen.getByTestId("lesson"));
+    const toolbar = await screen.findByRole("toolbar", { name: "Selected text" });
+    expect(toolbar.style.left).toBe("70px");
+    expect(mock.fetch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Read aloud" }));
+    await waitFor(() => expect(mock.fetch).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(mock.fetch.mock.calls[0][1].body)).toEqual({ text: "I", voice: "en-US-JennyNeural" });
+    await waitFor(() => expect(mock.audio[0].src).toBe("blob:speech"));
+    await act(async () => { window.getSelection()!.removeAllRanges(); document.dispatchEvent(new Event("selectionchange")); });
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+    expect(mock.audio[0].pause).toHaveBeenCalled();
+  });
+
   it("chooses the native language, including kanji-only selections", () => {
     expect(selectionVoice("Although she was tired.", "日语")).toBe("en-US-JennyNeural");
     expect(selectionVoice("すみません")).toBe("ja-JP-NanamiNeural");
