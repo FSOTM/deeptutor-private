@@ -36,7 +36,13 @@ jobs:
         working-directory: web
         run: |
           npm ci --legacy-peer-deps
-          npm run test:unit -- tests/chat-failed-submission-recovery.spec.tsx tests/chat-unsent-message-actions.spec.tsx tests/card-submission-acknowledgement.spec.tsx tests/mastery-question-card.spec.tsx tests/selection-speech.spec.tsx tests/reading-toolbar-selection.spec.tsx tests/reading-selection-sheet.spec.tsx tests/voice-settings.spec.tsx
+          npm run test:unit -- tests/chat-failed-submission-recovery.spec.tsx tests/chat-unsent-message-actions.spec.tsx tests/card-submission-acknowledgement.spec.tsx tests/mastery-question-card.spec.tsx tests/selection-speech.spec.tsx tests/reading-toolbar-selection.spec.tsx tests/reading-selection-sheet.spec.tsx tests/voice-settings.spec.tsx tests/chat-submission-clock.spec.tsx tests/unified-turn-client-errors.spec.ts
+      - name: Verify cancellation and reconnect transport
+        if: steps.prepare.outputs.changed == 'true'
+        working-directory: web
+        run: |
+          npx tsc -p tsconfig.node-tests.json
+          node -r ./scripts/register-node-test-aliases.cjs --test dist/node-tests/tests/turn-runtime-client.test.js
       - name: Build maintained frontend and package its runtime
         if: steps.prepare.outputs.changed == 'true'
         env:
