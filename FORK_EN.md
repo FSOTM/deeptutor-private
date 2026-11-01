@@ -65,4 +65,14 @@ These are dated maintenance records. Automatic CI runs without an online model; 
 
 The repository contains source, tests and maintenance tooling. It does **not** include API keys, accounts, textbooks, teaching audio, knowledge-base indexes, learning progress, databases or private NAS settings. Import your own material and configure your own retrieval/model services. No free API allowance is bundled.
 
-Upstream Apache-2.0 licensing and attribution are retained. This is not an official upstream release, and these changes have not been submitted as an upstream PR. The `-private` repository suffix is historical; the repository is public.
+## Upstream contributions
+
+Three independent PRs target upstream `dev`; as of November 1, 2026, they are open and have not been merged:
+
+- [#2321: Wait for cancellation teardown before allowing the next send](https://github.com/HKUDS/DeepTutor/pull/2321).
+- [#2320: Selected-passage speech in Chat, Mastery Path and Reading](https://github.com/HKUDS/DeepTutor/pull/2320). The upstream proposal uses the user's configured TTS provider and voice; it does not include this fork's automatic language-based voice selection or NAS integration.
+- [#2322: Preserve optional tool arguments across Responses conversion](https://github.com/HKUDS/DeepTutor/pull/2322).
+
+Cache-prefix preservation, incremental teaching state and total-context compaction remain fork-maintained changes and are not included in those PRs. Submission does not imply acceptance; upstream maintainers decide whether to merge and which defaults to use.
+
+Upstream Apache-2.0 licensing and attribution are retained. This is not an official upstream release. The `-private` repository suffix is historical; the repository is public.
