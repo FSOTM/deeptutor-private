@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "repository": "FSOTM/deeptutor-private",
-  "source_commit": "885afd852a5a10e74a5b3658d2d18176cde90c7b",
+  "source_commit": "0cde98504a1d29f2031805f014c3fe1ad7ae445c",
   "upstream_version": "1.7.1",
   "upstream_manifest_digest": "sha256:40dc404e9ebb5bccb47a954f0cf4264325882595f72a9228fa2caa91d2349c27",
   "checks": {
@@ -11,5 +11,11 @@
   },
   "model_window": 1000000,
   "compaction_trigger": 500000,
-  "retained_history_budget": 20000
+  "retained_history_budget": 20000,
+  "frontend_bundle": {
+    "source_commit": "0cde98504a1d29f2031805f014c3fe1ad7ae445c",
+    "url": "https://github.com/FSOTM/deeptutor-private/releases/download/nas-0cde98504a1d29f2031805f014c3fe1ad7ae445c/frontend.tar.gz",
+    "sha256": "e10c46f7d7fc085a4b3c1e99709a5c7974ffcf71905edcc838886d93f9a1fd42",
+    "bytes": 37151297
+  }
 }
