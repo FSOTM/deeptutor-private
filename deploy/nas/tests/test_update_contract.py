@@ -1,4 +1,5 @@
 import copy
+import datetime
 import importlib.util
 import io
 import json
@@ -7,6 +8,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('nas_updater',ROOT/'updater.py')
@@ -33,6 +35,21 @@ IMAGE='sha256:'+'a'*64
 DIGEST='sha256:'+'b'*64
 
 class UpgradeContractTests(unittest.TestCase):
+    def test_scheduler_starts_without_platform_tzset(self):
+        class TickCompleted(Exception):pass
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'.updates').mkdir()
+            outside_window=datetime.datetime(2026,11,1,12,tzinfo=datetime.timezone(datetime.timedelta(hours=8)))
+            with patch.object(updater,'ROOT',root),patch.object(updater,'scheduler_now',return_value=outside_window),\
+                 patch.object(updater.time,'tzset',None,create=True),patch.object(updater.time,'sleep',side_effect=TickCompleted),\
+                 patch.object(updater,'once') as update:
+                with self.assertRaises(TickCompleted):updater.daemon()
+                update.assert_not_called()
+                self.assertTrue((root/'.updates/daemon.pid').is_file())
+
+    def test_scheduler_uses_shanghai_time_independently_of_host(self):
+        self.assertEqual(updater.scheduler_now().utcoffset(),datetime.timedelta(hours=8))
+
     def test_old_mounts_are_removed_but_data_and_limits_remain(self):
         value=updater.rewrite_compose(OLD,IMAGE,DIGEST)
         self.assertIn('image: '+IMAGE,value)

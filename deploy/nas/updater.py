@@ -294,8 +294,13 @@ def once(apply=False):
         return result
 
 
+def scheduler_now():
+    # Synology's Python omits time.tzset even on Linux. Shanghai currently
+    # uses UTC+08:00 without DST; use an aware clock instead of process TZ.
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+
+
 def daemon():
-    os.environ['TZ']='Asia/Shanghai';time.tzset()
     state=ROOT/'.updates'
     with (state/'daemon.lock').open('w') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -303,7 +308,7 @@ def daemon():
         (state/'daemon.pid').write_text(str(os.getpid()))
         day=None;next_try=0
         while True:
-            now=datetime.datetime.now()
+            now=scheduler_now()
             if day!=now.date():day=now.date();next_try=0
             if (now.hour==4 and now.minute>=40 or 5<=now.hour<7) and time.monotonic()>=next_try:
                 try:
