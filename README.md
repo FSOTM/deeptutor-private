@@ -1,3 +1,5 @@
+> **Community maintenance fork — FSOTM.** Adds selected-text speech, safer Stop → Send handling, cache-preserving teaching-state updates, opt-in total-context compaction and guarded NAS upgrades. **[What differs from upstream](FORK_EN.md) · [与原版的区别（中文）](FORK.md) · [NAS workflow](deploy/nas/README.md)**. The upstream introduction follows below.
+
 <div align="center">
 
 <p align="center"><img src="assets/figs/logo/color-full.png" alt="DeepTutor" width="480"></p>
