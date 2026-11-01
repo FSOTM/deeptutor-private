@@ -1,0 +1,10 @@
+[
+  "desktop-notarization-diagnostics.yml",
+  "desktop-release.yml",
+  "docker-release.yml",
+  "memory-evaluation.yml",
+  "modules.yml",
+  "pypi-release.yml",
+  "repository-hygiene.yml",
+  "tests.yml"
+]
