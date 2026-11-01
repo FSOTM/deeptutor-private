@@ -198,7 +198,7 @@ class Updater:
         # candidate only ever sees its own bind mount and loopback web port.
         old=inspect('deeptutor')['Image']
         verifier=folder/'source/deploy/nas/verify_runtime.py'
-        run([DOCKER,'run','--rm','--network','none','--entrypoint','python','-v',str(data)+':/app/data','-v',str(verifier)+':/verify.py:ro','-v',str(folder)+':/verification',old,'/verify.py','--capture','/verification/baseline.json'])
+        run([DOCKER,'run','--rm','--network','none','--entrypoint','python','-w','/app','-e','PYTHONPATH=/app','-v',str(data)+':/app/data','-v',str(verifier)+':/verify.py:ro','-v',str(folder)+':/verification',old,'/verify.py','--capture','/verification/baseline.json'])
         name='deeptutor-upgrade-candidate'
         if subprocess.run([DOCKER,'container','inspect',name],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:
             raise RuntimeError('A staging container already exists; inspect it before proceeding')
@@ -210,7 +210,7 @@ class Updater:
              '-p','127.0.0.1:13782:3782','-v',str(data)+':/app/data','-v',str(folder/'baseline.json')+':/verification/baseline.json:ro',image])
         try:
             self.wait_ready(13782)
-            run([DOCKER,'exec','-u','1026:100',name,'python','/opt/deeptutor-nas/verify_runtime.py','--check','/verification/baseline.json'])
+            run([DOCKER,'exec','-u','1026:100','-w','/app','-e','PYTHONPATH=/app',name,'python','/opt/deeptutor-nas/verify_runtime.py','--check','/verification/baseline.json'])
             shutil.copyfile(folder/'baseline.json',baseline)
         finally:
             info=inspect(name)
@@ -252,7 +252,7 @@ class Updater:
             compose_path.write_text(trial);migrated=True
             self.recreate()
             run([DOCKER,'cp',backup/'baseline.json','deeptutor:/tmp/nas-upgrade-baseline.json'])
-            run([DOCKER,'exec','-u','1026:100','deeptutor','python','/opt/deeptutor-nas/verify_runtime.py','--check','/tmp/nas-upgrade-baseline.json'])
+            run([DOCKER,'exec','-u','1026:100','-w','/app','-e','PYTHONPATH=/app','deeptutor','python','/opt/deeptutor-nas/verify_runtime.py','--check','/tmp/nas-upgrade-baseline.json'])
             compose_path.write_text(final);self.recreate()
             if inspect('deeptutor')['Image']!=image:raise RuntimeError('Unexpected running image')
             self.reload_tls()
