@@ -129,11 +129,11 @@ def convert_tools(
             "description": fn.get("description") or "",
             "parameters": params if isinstance(params, dict) else {},
         }
-        # Keep an explicit strict choice; leave it out when unset so the
-        # provider default applies, as before.
+        # Preserve Chat Completions' optional-parameter semantics. Responses
+        # otherwise normalizes omitted strict into required fields, conflicting
+        # with tools whose optional arguments must genuinely be absent.
         strict = fn.get("strict")
-        if isinstance(strict, bool):
-            item["strict"] = strict
+        item["strict"] = strict if isinstance(strict, bool) else False
         converted.append(item)
     return converted
 
