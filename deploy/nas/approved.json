@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "repository": "FSOTM/deeptutor-private",
+  "source_commit": "0679d40aac28b27a5d65da1015715f2e2afaed73",
+  "upstream_version": "1.7.1",
+  "upstream_manifest_digest": "sha256:40dc404e9ebb5bccb47a954f0cf4264325882595f72a9228fa2caa91d2349c27",
+  "checks": {
+    "policy_and_state": "passed",
+    "responses_optional_tools": "passed",
+    "frontend_edit_retry": "passed"
+  },
+  "model_window": 1000000,
+  "compaction_trigger": 500000,
+  "retained_history_budget": 20000
+}
