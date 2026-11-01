@@ -36,7 +36,17 @@ jobs:
         working-directory: web
         run: |
           npm ci --legacy-peer-deps
-          npm run test:unit -- tests/chat-failed-submission-recovery.spec.tsx tests/chat-unsent-message-actions.spec.tsx tests/card-submission-acknowledgement.spec.tsx tests/mastery-question-card.spec.tsx tests/start-turn-input.test.ts
+          npm run test:unit -- tests/chat-failed-submission-recovery.spec.tsx tests/chat-unsent-message-actions.spec.tsx tests/card-submission-acknowledgement.spec.tsx tests/mastery-question-card.spec.tsx tests/selection-speech.spec.tsx tests/reading-toolbar-selection.spec.tsx tests/reading-selection-sheet.spec.tsx tests/voice-settings.spec.tsx
+      - name: Build maintained frontend and package its runtime
+        if: steps.prepare.outputs.changed == 'true'
+        env:
+          SOURCE_COMMIT: ${{ steps.prepare.outputs.source_commit }}
+        run: |
+          cd web
+          npm run build
+          cd ..
+          python3 deploy/nas/frontend_bundle.py create --source web/.next/standalone --archive "$RUNNER_TEMP/frontend.tar.gz" --metadata "$RUNNER_TEMP/frontend.json" --commit "$SOURCE_COMMIT"
+          cp -a web/.next/standalone web-runtime
       - name: Build and verify policy, state, compaction and tool compatibility
         if: steps.prepare.outputs.changed == 'true'
         run: >-
@@ -46,4 +56,6 @@ jobs:
           -f deploy/nas/Dockerfile -t deeptutor-private:verified .
       - name: Approve only the tested source commit
         if: steps.prepare.outputs.changed == 'true'
-        run: python3 deploy/nas/approve_release.py '${{ steps.prepare.outputs.source_commit }}'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 deploy/nas/approve_release.py '${{ steps.prepare.outputs.source_commit }}' "$RUNNER_TEMP/frontend.json" "$RUNNER_TEMP/frontend.tar.gz"

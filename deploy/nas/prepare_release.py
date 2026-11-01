@@ -37,9 +37,9 @@ def main():
     git('config','user.name','github-actions[bot]')
     git('config','user.email','41898282+github-actions[bot]@users.noreply.github.com')
     git('merge','--no-edit','--no-ff',upstream)
-    # The matching official frontend is reused. A local frontend/dependency
-    # modification needs a full build recipe, so reject it instead of hiding it.
-    git('diff','--exit-code',upstream,'--','web','deeptutor_cli','requirements','pyproject.toml','build_metadata.py')
+    # The frontend is compiled from maintained source. Python dependency/CLI
+    # changes still require review against the matching official backend image.
+    git('diff','--exit-code',upstream,'--','deeptutor_cli','requirements','pyproject.toml','build_metadata.py')
     allowed=json.loads((ROOT/'deploy/nas/upstream-workflows.json').read_text())
     actual=sorted(p.name for p in (ROOT/'.github/workflows').glob('*.y*ml') if p.name!='nas-release.yml')
     if actual!=allowed:raise RuntimeError('Upstream workflow set changed; review before publishing')

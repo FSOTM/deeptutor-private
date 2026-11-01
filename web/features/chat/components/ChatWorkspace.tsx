@@ -1786,7 +1786,7 @@ export default function ChatWorkspace() {
           "[data-chat-message-id]",
         ),
       );
-    if (text.length < 2 || !inMessage(selection.anchorNode) || !inMessage(selection.focusNode)) {
+    if (!text.trim() || !inMessage(selection.anchorNode) || !inMessage(selection.focusNode)) {
       setSelectedPassage(null);
       return;
     }
@@ -2836,6 +2836,8 @@ export default function ChatWorkspace() {
                   {selectedPassage ? (
                     <SelectionActions
                       anchor={selectedPassage.anchor}
+                      text={selectedPassage.text}
+                      workspaceName={workspaces.find(row => row.workspace_id === state.workspaceId)?.display_name}
                       agents={agentOptions}
                       onAddToChat={addSelectedPassageToChat}
                       onAsk={askAboutSelectedPassage}

@@ -294,3 +294,6 @@ dmypy.json
 *.mp3
 *.wav
 *.ogg
+
+# CI-built standalone frontend; published as a verified release asset.
+/web-runtime/
