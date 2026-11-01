@@ -531,13 +531,8 @@ class AgenticLoopPipeline:
             if isinstance(item.get("_context_snapshot"), str)
         }
         snapshots = dict(self._runtime_snapshots)
-        # The rolling summary is a runtime fact like any other: it is rewritten
-        # when compaction runs, so it must reach the model as a *trailing*
-        # snapshot rather than a leading system message. Appended last, a
-        # rewrite (and the compaction that causes it) only ever adds bytes after
-        # everything the previous request already sent, keeping that request a
-        # prompt-cache hit; the snapshot tag makes the unchanged case a no-op on
-        # later turns instead of re-appending a fresh copy every turn.
+        # Append a changed summary after retained history. Successful
+        # compaction may reset the prefix; ordinary turns must not rewrite it.
         from deeptutor.services.session.model_history import (
             SUMMARY_SNAPSHOT_NAME,
             summary_snapshot,
@@ -551,20 +546,13 @@ class AgenticLoopPipeline:
             snapshots[name] = (
                 f"[Runtime context: {name}]\nThis section is now empty; earlier values no longer apply."
             )
-        # A changed runtime section replaces its old version in this request.
-        # The archive remains intact; actual dialogue/tool evidence is untouched.
-        messages = [
-            item
-            for item in messages
-            if not (
-                item.get("role") == "user"
-                and isinstance(item.get("_context_snapshot"), str)
-                and snapshots.get(item["_context_snapshot"]) != item.get("content")
-            )
-        ]
+        # Preserve old snapshots byte-for-byte. A newly appended snapshot of
+        # the same section is authoritative; the old one remains historical.
         self._model_turn_start = len(messages)
         for name, snapshot in snapshots.items():
-            if previous_snapshots.get(name) != snapshot:
+            if (previous_snapshots.get(name) != snapshot
+                    or (name == "mastery_status_snapshot"
+                        and getattr(self, "fresh_mastery_state_each_turn", False))):
                 messages.append({"role": "user", "content": snapshot, "_context_snapshot": name})
         messages.append({"role": "user", "content": user_content})
         return self._prepare_messages_with_attachments(messages, context)

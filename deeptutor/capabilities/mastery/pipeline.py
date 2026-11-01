@@ -27,7 +27,7 @@ from typing import Any
 
 from deeptutor.agents.loop.pipeline import AgenticLoopPipeline
 from deeptutor.agents.loop.prompt_blocks import LoopPromptAssembler, PromptBlock
-from deeptutor.capabilities.mastery.history import STATE_REFERENCE_NOTICE, share_mastery_history
+from deeptutor.capabilities.mastery.history import STATE_REFERENCE_NOTICE
 from deeptutor.capabilities.mastery.loop import NATIVE_LOOP_FLAG
 from deeptutor.capabilities.mastery.memory import MEMORY_NOTICE
 from deeptutor.capabilities.mastery.mode import normalize_mode
@@ -70,6 +70,7 @@ class MasteryLoopPipeline(AgenticLoopPipeline):
 
     prompt_module = "mastery"
     prompt_agent = "mastery_loop"
+    fresh_mastery_state_each_turn = True
     # Labels, notices and the KB-seed header are engine copy, shared with every
     # loop; the mastery pack states only the tutor's own blocks.
     prompt_base_module = "chat"
@@ -302,22 +303,23 @@ class MasteryLoopPipeline(AgenticLoopPipeline):
             context,
             include_tool_manifest=include_tool_manifest,
         )
+        from deeptutor.capabilities.mastery.state_updates import STATE_UPDATE_NOTICE
+
+        # Protocol instructions are a new trailing runtime message, never a
+        # rewrite of an existing session's system prompt/cache prefix.
+        self._runtime_snapshots["mastery_state_protocol"] = STATE_UPDATE_NOTICE.strip()
         snapshot = context.extension("mastery").get("status_snapshot")
         if snapshot:
             self._runtime_snapshots["mastery_status_snapshot"] = snapshot
         return prompt + STATE_REFERENCE_NOTICE + MEMORY_NOTICE
 
+    def freeze_new_model_messages(self, messages):
+        from deeptutor.capabilities.mastery.state_updates import freeze_new_messages
+        freeze_new_messages(messages, self._model_turn_start)
+
     def project_model_request(self, messages):
-        from copy import deepcopy
-
-        projected = deepcopy(messages)
-        share_mastery_history(projected, len(projected))
-        return projected
-
-    def _build_loop_messages(self, **kwargs):
-        messages = super()._build_loop_messages(**kwargs)
-        share_mastery_history(messages, self._model_turn_start)
-        return messages
+        from deeptutor.capabilities.mastery.state_updates import project_messages
+        return project_messages(messages)
 
     async def run(self, context: UnifiedContext, stream: Any) -> dict[str, Any]:
         # Tells MasteryLoopCapability that the playbook is already the

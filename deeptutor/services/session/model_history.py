@@ -37,6 +37,7 @@ _MESSAGE_KEYS = frozenset(
         "_provider_response_state",
         "_context_snapshot",
         "_lesson_packet",
+        "_mastery_state_projection",
     }
 )
 
@@ -175,7 +176,8 @@ def replay_group(
             original_input = str(rows[0].get("content") or "")
             for message in messages:
                 content = message.get("content")
-                if message.get("role") != "user" or not isinstance(content, str):
+                if (message.get("role") != "user" or not isinstance(content, str)
+                        or isinstance(message.get("_context_snapshot"), str)):
                     continue
                 # Older prepared inputs fused a fresh status read with the
                 # learner's words. Remove only that exact valid suffix, never
@@ -246,26 +248,9 @@ def replay_history(
     messages: list[dict[str, Any]] = []
     for group in history_groups(rows):
         messages.extend(replay_group(group, route))
-    # Runtime snapshots are current state, not learning history. Keep the
-    # latest per section; keep every user exchange and tool protocol pair.
-    latest: dict[str, int] = {}
-    for index, message in enumerate(messages):
-        if message.get("role") != "user":
-            continue
-        name = message.get("_context_snapshot")
-        if isinstance(name, str):
-            latest[name] = index
-    return [
-        message
-        for index, message in enumerate(messages)
-        if not (
-            message.get("role") == "user"
-            and (
-                isinstance(message.get("_context_snapshot"), str)
-                and latest[message["_context_snapshot"]] != index
-            )
-        )
-    ]
+    # Keep historical snapshots in their original positions. The answer loop
+    # appends changed/current state; only successful compaction drops old turns.
+    return messages
 
 
 def complete_tool_results(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:

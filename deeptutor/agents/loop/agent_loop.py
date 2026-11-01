@@ -257,11 +257,13 @@ class AgentLoop:
 
                 # Keep the prepared input (including attachments and briefings)
                 # and every model/tool message, independently of display repair.
+                from deeptutor.services.session.total_compaction import turn_messages_for_storage
+
                 self.context.runtime.model_turn = normalize_model_turn(
                     {
                         "version": 1,
                         "messages": complete_tool_results(
-                            messages[self.pipeline._model_turn_start :]
+                            turn_messages_for_storage(self, messages)
                         ),
                         "system": messages[0]["content"],
                         "tools": self._request_tools,
@@ -297,6 +299,13 @@ class AgentLoop:
             budget = self.pipeline.measure_context_budget(self._last_request)
             if budget is not None:
                 payload["metadata"] = {"context_budget": budget}
+                from deeptutor.services.session.total_compaction import total_limit
+                threshold = total_limit(self.pipeline.llm_config)
+                if threshold is not None:
+                    payload["metadata"]["auto_compaction"] = {
+                        "threshold": threshold,
+                        "completed": self.context.extension("total_context_compaction").get("completed", []),
+                    }
         if self.pipeline.emit_result:
             await emit_capability_result(
                 self.stream,
@@ -650,24 +659,36 @@ class AgentLoop:
     ) -> LLMCallResult:
         prepare = getattr(self.pipeline, "prepare_model_request", None)
         lesson_messages = await prepare(self.context, self.stream, messages) if prepare else []
-        request_messages = with_transient_model_messages(messages, self._transient_model_messages)
-        # Current tool pixels take precedence over cached lesson pages. Neither
-        # belongs in the durable dialogue; the hook runs again on forced finish.
-        if lesson_messages and not has_image_parts(self._transient_model_messages):
-            request_messages = [*request_messages, *lesson_messages]
-        project = getattr(self.pipeline, "project_model_request", None)
-        if project is not None:
-            request_messages = project(request_messages)
-        projected_messages = deduplicate_user_images(
-            [
-                {
-                    key: value
-                    for key, value in message.items()
-                    if key not in {"_context_snapshot", "_lesson_packet"}
-                }
+        freeze = getattr(self.pipeline, "freeze_new_model_messages", None)
+        if freeze is not None:
+            freeze(messages)
+        projection_sources = {}
+        def project_request(base_messages):
+            request_messages = with_transient_model_messages(base_messages, self._transient_model_messages)
+            if lesson_messages and not has_image_parts(self._transient_model_messages):
+                request_messages = [*request_messages, *lesson_messages]
+            project = getattr(self.pipeline, "project_model_request", None)
+            if project is not None:
+                request_messages = project(request_messages)
+            projected = deduplicate_user_images([
+                {key: value for key, value in message.items()
+                 if key not in {"_context_snapshot", "_lesson_packet", "_mastery_state_projection"}}
                 for message in request_messages
-            ]
+            ])
+            for original, projected_message in zip(request_messages, projected):
+                projection_sources[id(projected_message)] = (projected_message, original)
+            return projected
+
+        from deeptutor.services.session.total_compaction import enforce_total_budget
+        projected_messages = await enforce_total_budget(
+            self, messages, tool_schemas, project_request
         )
+        # Preserve the upstream provider-fallback mapping after compaction.
+        # A summarized tool copy must never overwrite its canonical archive.
+        request_messages = []
+        for message in projected_messages:
+            pair = projection_sources.get(id(message))
+            request_messages.append(pair[1] if pair and pair[0] is message else message)
         await self.pipeline._guard_context_window(
             projected_messages, self.stream, tool_schemas=tool_schemas
         )
@@ -701,6 +722,12 @@ class AgentLoop:
             "stream": True,
             **self.pipeline._completion_kwargs(max_tokens=max_tokens),
         }
+        from deeptutor.services.session.total_compaction import session_cache_key
+        cache_key = session_cache_key(self.pipeline.llm_config, self.context.session_id)
+        if cache_key and not kwargs.get("prompt_cache_key"):
+            extra_body = dict(kwargs.get("extra_body") or {})
+            extra_body.setdefault("prompt_cache_key", cache_key)
+            kwargs["extra_body"] = extra_body
         if threads_session_id(self.pipeline.binding):
             kwargs["deeptutor_session_id"] = self.context.session_id
         if self.pipeline.usage is not None:

@@ -288,7 +288,13 @@ class ContextBuilder:
         )
 
     def _history_budget(self, llm_config: LLMConfig) -> int:
+        forced = getattr(self, "_total_context_forced_budget", None)
+        if forced is not None:
+            return forced
+        from deeptutor.services.session.total_compaction import total_limit
         effective_context_window = self._effective_context_window(llm_config)
+        if total_limit(llm_config) is not None:
+            return effective_context_window
         ratio_budget = max(256, int(effective_context_window * self.history_budget_ratio))
         return min(ratio_budget, MAX_HISTORY_PLAN_TOKENS)
 
@@ -692,7 +698,10 @@ class ContextBuilder:
             (record for row in reversed(messages) if (record := model_turn(row)) is not None),
             None,
         )
-        if current_tokens <= budget:
+        from deeptutor.services.session.total_compaction import total_limit
+        defer_to_total = (total_limit(llm_config) is not None
+                          and getattr(self, "_total_context_forced_budget", None) is None)
+        if defer_to_total or current_tokens <= budget:
             return ContextBuildResult(
                 conversation_history=current_history,
                 conversation_summary=stored_summary,

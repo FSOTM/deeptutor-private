@@ -39,8 +39,8 @@ MEMORY_NOTICE = (
     "answer, explanation or preference is unclear, use read_source with its archive ID "
     "to recover that original exchange. Do not invent remembered details or assume "
     "understanding just because a topic was explained. Recall only relevant exchanges, "
-    "not the entire archive on every turn. Previously recalled archive bodies are "
-    "represented by archive_id references, not copied into later exchanges. "
+    "not the entire archive on every turn. Already sent messages remain unchanged "
+    "until compaction; fresh runtime snapshots supersede historical snapshots. "
     "Large archive reads are paginated; use the returned next_offset when needed."
 )
 
@@ -82,9 +82,12 @@ def archive_text(group: list[dict[str, Any]]) -> str:
 
 
 def _memory_tokens(messages, summary):
-    # Historical runtime snapshots are removed by the tutor projection. The
-    # answer loop will append the current summary, so reserve it separately.
-    tokens = _count_model_context_tokens(deduplicate_user_images(messages))
+    # Historical runtime snapshots stay in place for prefix reuse. Reserve
+    # the current summary separately as a conservative planning allowance.
+    # The durable sidecar is bookkeeping, not a second copy sent to a model.
+    accounting = [{k: v for k, v in m.items() if k != '_mastery_state_projection'}
+                  for m in messages]
+    tokens = _count_model_context_tokens(deduplicate_user_images(accounting))
     snapshot = summary_snapshot(summary)
     return tokens + (_count_model_context_tokens(snapshot) if snapshot else 0)
 
@@ -93,6 +96,9 @@ class MasteryContextBuilder(ContextBuilder):
     """A cost-sized history plan, not a percentage of a huge model window."""
 
     def _history_budget(self, llm_config):
+        from deeptutor.services.session.total_compaction import total_limit
+        if total_limit(llm_config) is not None:
+            return super()._history_budget(llm_config)
         return min(super()._history_budget(llm_config), 20_000)
 
     def _summary_budget(self, budget, llm_config=None):
@@ -131,7 +137,10 @@ class MasteryContextBuilder(ContextBuilder):
         result.model_history = project_mastery_replay(result.model_history or [])
         result.token_count = _memory_tokens(result.model_history, result.conversation_summary)
         result.history_sources = sources
-        if result.token_count > result.budget:
+        from deeptutor.services.session.total_compaction import total_limit
+        defer_to_total = (total_limit(kwargs.get("llm_config")) is not None
+                          and getattr(self, "_total_context_forced_budget", None) is None)
+        if not defer_to_total and result.token_count > result.budget:
             # One complete historical exchange can itself exceed the plan.
             # Keep it in exact recall instead of splitting tool-call/result pairs
             # or sending an unbounded request after a failed summary.

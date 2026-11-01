@@ -47,16 +47,10 @@ def project_mastery_replay(messages: list[dict[str, Any]]) -> list[dict[str, Any
     Never interpret an unmarked user quotation as runtime context. Tool pairs,
     dialogue and unique historical state stay intact until successful condensing.
     """
-    projected = deepcopy(
-        [
-            m
-            for m in messages
-            if not (m.get("role") == "user" and (isinstance(m.get("_context_snapshot"), str)))
-        ]
-    )
-    reference_history_reads(projected)
-    share_mastery_history(projected, len(projected))
-    return projected
+    # Do not remove snapshots or shorten prior read_source results on replay.
+    # They were part of the previous request; rewriting them invalidates its
+    # cached prefix. Runtime appends changed state, and compaction bounds size.
+    return deepcopy(messages)
 
 
 def reference_history_reads(messages: list[dict[str, Any]]) -> None:

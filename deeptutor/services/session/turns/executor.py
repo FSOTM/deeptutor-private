@@ -1070,6 +1070,11 @@ class TurnExecutor:
                 },
             )
 
+            # Carry the exact tenant/branch-aware builder into request-time
+            # compaction; do not reopen a different user's session store.
+            context.extension("total_context_compaction").update({
+                "builder": builder, "leaf_message_id": branch_parent_id,
+            })
             pending_done_event: StreamEvent | None = None
             async for event in self.turn_engine.execute(context):
                 if event.type == StreamEventType.SESSION:
